@@ -2,8 +2,10 @@
 pragma solidity ^0.8.0;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract Exchange {
+
+contract Exchange is ERC20 {
 
     address public tokenAddress;
 
@@ -14,8 +16,18 @@ contract Exchange {
 
     // @dev: Add liquidity to the exchange contract
     function addLiquidity(uint256 _tokenAmount) public payable {
-        IERC20 token = IERC20(tokenAddress);
-        token.transferFrom(msg.sender, address(this), _tokenAmount);
+        if (getReserve() == 0) {
+            IERC20 token = IERC20(tokenAddress);
+            token.transferFrom(msg.sender, address(this), _tokenAmount);
+        } else {
+            uint256 ethReserve = address(this).balance - msg.value;
+            uint256 tokenReserve = getReserve();
+            uint256 tokenAmount = (msg.value * tokenReserve) / ethReserve;
+            require(_tokenAmount >= tokenAmount, "insufficient token amount");
+
+            IERC20 token = IERC20(tokenAddress);
+            token.transferFrom(msg.sender, address(this), tokenAmount);
+        }
     }
 
     function ethToTokenSwap(uint256 _minTokens) public payable {
