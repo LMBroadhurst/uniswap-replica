@@ -1,0 +1,22 @@
+{
+  "name": "forge-hardhat-starter",
+  "version": "1.0.0",
+  "description": "```\r $ forge --help - Show the forge help message",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.0.1",
+    "hardhat": "^2.14.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3"
+  }
+}
