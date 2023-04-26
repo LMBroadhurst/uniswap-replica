@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.19;
 
-import "openzeppelin-contracts\contracts\token\ERC20\ERC20.sol";
-import "openzeppelin-contracts\contracts\utils\math\Math.sol";
+import "solmate/tokens/ERC20.sol";
+import "src/libraries/Math.sol";
 
 error InsufficientLiquidityMinted();
 error InsufficientLiquidityBurned();
 error TransferFailed();
+
+interface IERC20 {
+    function balanceOf(address) external returns (uint256);
+    function transfer(address to, uint256 amount) external;
+}
 
 contract LuniswapV2Pair is ERC20, Math {
 
@@ -68,5 +73,15 @@ contract LuniswapV2Pair is ERC20, Math {
         _update(balance0, balance1);
 
         emit Mint(msg.sender, amount0, amount1);
+    }
+
+    function getReserves() public view returns (uint112, uint112, uint32) {
+        return (uint112(reserve0), uint112(reserve1), uint32(0));
+    }
+
+    function _update(uint256 balance0, uint256 balance1) private {
+        reserve0 = uint112(balance0);
+        reserve1 = uint112(balance1);
+        emit Sync(reserve0, reserve1);
     }
 }
