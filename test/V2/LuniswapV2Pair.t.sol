@@ -5,6 +5,8 @@ import "forge-std/Test.sol";
 import "../mocks/ERC20Mintable.sol";
 import "../../src/V2/LuniswapV2Pair.sol";
 
+// https://jeiwan.net/posts/programming-defi-uniswapv2-1/
+
 contract LuniswapV2PairTest is Test {
 
     ERC20Mintable token0;
