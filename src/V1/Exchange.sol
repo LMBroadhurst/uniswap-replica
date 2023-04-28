@@ -25,15 +25,28 @@ contract Exchange is ERC20 {
         token.transferFrom(msg.sender, address(this), _tokenAmount);
     }
 
-    function getPrice(uint256 inputReserve, uint256 outputreserve)
-    public pure returns (uint256)
-    {
-        require(inputReserve > 0 && outputreserve > 0, "Reserves must be greater than 0");
-        return inputReserve / outputreserve;
-    }
+    
 
     // Helper Functions
     function getReserve() public view returns (uint256) {
         return IERC20(tokenAddress).balanceOf(address(this));
+    }
+
+    function getPrice(uint256 inputReserve, uint256 outputreserve)
+    public pure returns (uint256)
+    {
+        require(inputReserve > 0 && outputreserve > 0, "Reserves must be greater than 0");
+        return (inputReserve * 1000) / outputreserve;
+    }
+
+    // Low level functions -- make it private, why?
+    // Would also be pointless to be a public function
+    function getAmount(
+        uint256 inputAmount,
+        unit256 inputReserve,
+        uint256 outputReserve
+    ) private pure returns (uint256) {
+        require(inputReserve > 0 && outputReserve > 0, "Reserves must be greater than 0");
+        return (inputAmount * outputReserve) / (inputReserve + inputAmount);
     }
 }
