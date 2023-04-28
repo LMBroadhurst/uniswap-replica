@@ -1,18 +1,20 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.19;
 
-import "forge-std/Test.sol";
+import "../../src/V1/Exchange.sol";
 import "../mocks/ERC20Mintable.sol";
+import "forge-std/Test.sol";
 
 contract V1Test is Test {
 
-    function setUp() public {
-        token0 = new ERC20Mintable("ETH", "ETH");
-        token1 = new ERC20Mintable("SwapToken", "SWAP");
-        pair = new ZuniswapV2Pair(address(token0), address(token1));
+    Exchange exchange;
+    address token1;
 
-        token0.mint(10 ether);
+    function setUp() public {
+        token1 = new ERC20Mintable("SwapToken", "SWAP");
         token1.mint(10 ether);
+
+        exchange = new Exchange(token1);        
     }
 
     function testAddLiquidity() public {

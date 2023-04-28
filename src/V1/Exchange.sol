@@ -10,7 +10,7 @@ contract Exchange is ERC20 {
     address public factoryAddress;
 
     constructor(address _tokenAddress)
-    ERC20("LuniSwap V1", "LUNI-V1")) {
+    ERC20("LuniSwap V1", "LUNI-V1") {
         require(_tokenAddress != address(0), "Token address cannot be 0");
         
         tokenAddress = _tokenAddress;
@@ -23,6 +23,13 @@ contract Exchange is ERC20 {
     function addLiquidity(uint256 _tokenAmount) public payable {
         IERC20 token = IERC20(tokenAddress);
         token.transferFrom(msg.sender, address(this), _tokenAmount);
+    }
+
+    function getPrice(uint256 inputReserve, uint256 outputreserve)
+    public pure returns (uint256)
+    {
+        require(inputReserve > 0 && outputreserve > 0, "Reserves must be greater than 0");
+        return inputReserve / outputreserve;
     }
 
     // Helper Functions
