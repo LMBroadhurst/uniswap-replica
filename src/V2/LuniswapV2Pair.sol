@@ -4,7 +4,7 @@ pragma solidity 0.8.19;
 import "openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "../libraries/Math.sol";
 
-contract LuniswapV2Pair is ERC20, Math {
+contract LuniswapV2Pair is Math, ERC20 {
 
     // -- STATE -- //
 
