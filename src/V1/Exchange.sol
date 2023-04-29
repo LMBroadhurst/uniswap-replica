@@ -43,7 +43,7 @@ contract Exchange is ERC20 {
     // Would also be pointless to be a public function
     function getAmount(
         uint256 inputAmount,
-        unit256 inputReserve,
+        uint256 inputReserve,
         uint256 outputReserve
     ) private pure returns (uint256) {
         require(inputReserve > 0 && outputReserve > 0, "Reserves must be greater than 0");
