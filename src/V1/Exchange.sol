@@ -32,7 +32,7 @@ contract Exchange is ERC20 {
     // Need to able to add liquidity to the exchange LP
     // Why public?
     // Why payable? Allows function to receive ETH and add ETH to the Exchange contract
-    function addLiquidity(uint256 _tokenAmount) public payable returns(uint256 liquidity) {
+    function addLiquidity(uint256 _tokenAmount) public payable returns (uint256 liquidity) {
         if (getTokenReserves() == 0) {
             IERC20 token = IERC20(tokenAddress);
             token.transferFrom(msg.sender, address(this), _tokenAmount);
