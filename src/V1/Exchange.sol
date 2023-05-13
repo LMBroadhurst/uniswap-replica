@@ -73,7 +73,8 @@ contract Exchange is ERC20 {
     // -- SWAPS -- //
 
     // Need to - msg.value from balance as the function has already taken the msg.balance from payable
-    function ethToToken(uint256 _minTokens, address recipient) private {
+    // @dev -- Swap ETH for Token functionality.
+    function ethToToken(uint256 _minTokens, address recipient) internal {
         uint256 tokenReserve = getTokenReserves();
         uint256 tokensBought = getAmount(
             msg.value,
@@ -85,10 +86,12 @@ contract Exchange is ERC20 {
         IERC20(tokenAddress).transfer(recipient, tokensBought);
     }
 
+    // @dev -- Swap ETH for Token, called function.
     function ethToTokenSwap(uint256 _minTokens) public payable {
         ethToToken(_minTokens, msg.sender);
     }
 
+    // @dev -- Swap ETH for Token, called function. Send to non msg.sender address.
     function ethToTokenTransfer(uint256 _minTokens, address _recipient) public payable {
         ethToToken(_minTokens, _recipient);
     }
