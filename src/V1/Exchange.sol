@@ -19,6 +19,7 @@ contract Exchange is ERC20 {
     // Public variables
     address public tokenAddress;
     address public factoryAddress;
+    uint256 public totalSupply;
     mapping(address userLuniAddress => uint256 userLuniBalance) balances;
     mapping(address userAddress => mapping(address approvedAddress => uint256 amount)) allowances;
 
@@ -44,7 +45,7 @@ contract Exchange is ERC20 {
     // @dev Allows users to add liquidity to an established pool, or create a new pool if one doesn't exist
     // @param _tokenAmount: Should be equal to the ratio of _token <-> ETH on the public market.
     function addLiquidity(uint256 _minLiquidity, uint256 _maxTokens, uint256 _deadline)
-    public payable returns (uint256 liquidity) {
+    public payable returns (uint256 liquidity_) {
 
         // input validation checks.
         require(_deadline > block.timestamp &&
@@ -52,7 +53,28 @@ contract Exchange is ERC20 {
                 msg.value > 0, "Error with inputs"
         );
 
-        if (getTokenReserves() == 0) {
+        if (totalSupply > 0) {
+
+            require(_minLiquidity > 0, "_minLiquidity must be greater than 0.");
+
+            // Need to - msg.value from balance as the function has already taken the msg.balance from payable
+            uint256 ethReserve = address(this).balance - msg.value;
+            uint256 tokenReserve = getTokenReserves();
+
+            uint256 tokenAmount = (msg.value * tokenReserve) / (ethReserve + 1);
+            uint256 liquidityMinted = (msg.value * totalSupply) / ethReserve;
+
+            //
+            require(_maxTokens >= tokenAmount, "x"); // line 57
+
+            require(_tokenAmount >= tokenAmount, "insufficient token amount");
+            IERC20(tokenAddress).transferFrom(msg.sender, address(this), tokenAmount);
+
+            _mint(msg.sender, liquidity);
+
+            return liquidity;
+
+        } else {
 
             // tokenAddress / factoryAddress 0 address checks.
             require(
@@ -68,20 +90,6 @@ contract Exchange is ERC20 {
             IERC20 token = IERC20(tokenAddress);
             token.transferFrom(msg.sender, address(this), tokenAmount);
 
-            _mint(msg.sender, liquidity);
-
-            return liquidity;
-
-        } else {
-            // Need to - msg.value from balance as the function has already taken the msg.balance from payable
-            uint256 ethReserve = address(this).balance - msg.value;
-            uint256 tokenReserve = getTokenReserves();
-
-            uint256 tokenAmount = (msg.value * tokenReserve) / ethReserve;
-            require(_tokenAmount >= tokenAmount, "insufficient token amount");
-            IERC20(tokenAddress).transferFrom(msg.sender, address(this), tokenAmount);
-
-            liquidity = (msg.value * totalSupply()) / ethReserve;
             _mint(msg.sender, liquidity);
 
             return liquidity;
