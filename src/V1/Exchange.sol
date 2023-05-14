@@ -15,12 +15,23 @@ interface IExchange {
 }
 
 contract Exchange is ERC20 {
-    // public variable, meaning anyone can find out the token that this exchange is linked to
+
+    // Public variables
     address public tokenAddress;
     address public factoryAddress;
+    mapping(address userLuniAddress => uint256 userLuniBalance) balances;
 
-    constructor(address _tokenAddress)
-    ERC20("LuniSwap V1", "LUNI-V1") {
+    // Events
+    event TokenPurchase(address indexed buyer, uint256 indexed ethSold, uint256 indexed tokensBought);
+    event EthPurchase(address indexed buyer, uint256 indexed tokensSold, uint256 indexed ethBought);
+    event AddLiquidity(address indexed provider, uint256 indexed ethAmount, uint256 indexed tokenAmount);
+    event RemoveLiquidity(address indexed buyer, uint256 indexed ethAmount, uint256 indexed tokenAmount);
+    event Transfer(address indexed buyer, uint256 indexed _to, uint256 indexed _value);
+    event Approval(address indexed _owner, address indexed _spender, uint256 indexed _value);
+
+    // @notice All Exchange contracts will use the LuniSwap V1 / LUNI-V1 name / ticker.
+    // @param _tokenAddress: The token to be used in the pool against ETH.
+    constructor(address _tokenAddress) ERC20("LuniSwap V1", "LUNI-V1") {
         require(_tokenAddress != address(0), "Token address cannot be 0");
         
         tokenAddress = _tokenAddress;
@@ -29,9 +40,8 @@ contract Exchange is ERC20 {
 
     // -- LIQUDITY IN/OUT -- //
 
-    // Need to able to add liquidity to the exchange LP
-    // Why public?
-    // Why payable? Allows function to receive ETH and add ETH to the Exchange contract
+    // @dev Allows users to add liquidity to an established pool, or create a new pool if one doesn't exist
+    // @param _tokenAmount: Should be equal to the ratio of _token <-> ETH on the public market.
     function addLiquidity(uint256 _tokenAmount) public payable returns (uint256 liquidity) {
         if (getTokenReserves() == 0) {
             IERC20 token = IERC20(tokenAddress);
