@@ -20,6 +20,7 @@ contract Exchange is ERC20 {
     address public tokenAddress;
     address public factoryAddress;
     mapping(address userLuniAddress => uint256 userLuniBalance) balances;
+    mapping(address userAddress => mapping(address approvedAddress => uint256 amount)) allowances;
 
     // Events
     event TokenPurchase(address indexed buyer, uint256 indexed ethSold, uint256 indexed tokensBought);
@@ -38,19 +39,39 @@ contract Exchange is ERC20 {
         factoryAddress = msg.sender;
     }
 
-    // -- LIQUDITY IN/OUT -- //
+    // -- LIQUIDITY IN/OUT -- //
 
     // @dev Allows users to add liquidity to an established pool, or create a new pool if one doesn't exist
     // @param _tokenAmount: Should be equal to the ratio of _token <-> ETH on the public market.
-    function addLiquidity(uint256 _tokenAmount) public payable returns (uint256 liquidity) {
-        if (getTokenReserves() == 0) {
-            IERC20 token = IERC20(tokenAddress);
-            token.transferFrom(msg.sender, address(this), _tokenAmount);
+    function addLiquidity(uint256 _minLiquidity, uint256 _maxTokens, uint256 _deadline)
+    public payable returns (uint256 liquidity) {
 
-            liquidity = address(this).balance;
+        // input validation checks.
+        require(_deadline > block.timestamp &&
+                _maxTokens > 0 &&
+                msg.value > 0, "Error with inputs"
+        );
+
+        if (getTokenReserves() == 0) {
+
+            // tokenAddress / factoryAddress 0 address checks.
+            require(
+                tokenAddress != 0 && factoryAddress != 0,
+                "tokenAddress or factoryAddress failed the Zero Address check."
+            );
+
+            uint256 tokenAmount = _maxTokens;
+            uint256 initialLiquidity = address(this).balance;
+            balances[msg.sender] += initialLiquidity;
+
+
+            IERC20 token = IERC20(tokenAddress);
+            token.transferFrom(msg.sender, address(this), tokenAmount);
+
             _mint(msg.sender, liquidity);
 
             return liquidity;
+
         } else {
             // Need to - msg.value from balance as the function has already taken the msg.balance from payable
             uint256 ethReserve = address(this).balance - msg.value;
