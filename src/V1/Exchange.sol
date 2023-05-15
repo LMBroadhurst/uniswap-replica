@@ -30,6 +30,7 @@ contract Exchange is ERC20 {
     event RemoveLiquidity(address indexed buyer, uint256 indexed ethAmount, uint256 indexed tokenAmount);
     event Transfer(address indexed buyer, uint256 indexed _to, uint256 indexed _value);
     event Approval(address indexed _owner, address indexed _spender, uint256 indexed _value);
+    event MintLuni(address indexed _minter, uint256 indexed _amount);
 
     // @notice All Exchange contracts will use the LuniSwap V1 / LUNI-V1 name / ticker.
     // @param _tokenAddress: The token to be used in the pool against ETH.
@@ -61,16 +62,30 @@ contract Exchange is ERC20 {
             uint256 ethReserve = address(this).balance - msg.value;
             uint256 tokenReserve = getTokenReserves();
 
+            // calculate tokens needed for swap and LUNI minted
             uint256 tokenAmount = (msg.value * tokenReserve) / (ethReserve + 1);
             uint256 liquidityMinted = (msg.value * totalSupply) / ethReserve;
 
-            //
-            require(_maxTokens >= tokenAmount, "x"); // line 57
+            // ensures that there has not been a miscalculation or incorrect tokenAmount input
+            require(_maxTokens >= tokenAmount, "x");
 
-            require(_tokenAmount >= tokenAmount, "insufficient token amount");
-            IERC20(tokenAddress).transferFrom(msg.sender, address(this), tokenAmount);
+            // Ensures we are getting at least the min expected liquidity
+            // If there is major slippage induced between time UI is clicked and transaction is processed, transaction
+            // won't be processed.
+            require(liquidityMinted >= _minLiquidity, "insufficient token amount");
 
+            // update liquidity pools state
+            balances[msg.sender] += liquidityMinted;
+            totalSupply += liquidityMinted;
+
+            // Approve token transfer, transfer tokens from msg.sender to pool, if successful mint LUNI
+            IERC20(tokenAddress).approve(address(this), tokenAmount);
+            bool success = IERC20(tokenAddress).transferFrom(msg.sender, address(this), tokenAmount);
+            require(success, "Token transfer failed.");
             _mint(msg.sender, liquidity);
+
+            emit AddLiquidity(msg.sender, msg.value, tokenAmount);
+            emit MintLuni(msg.sender, liquidityMinted);
 
             return liquidity;
 
@@ -82,15 +97,19 @@ contract Exchange is ERC20 {
                 "tokenAddress or factoryAddress failed the Zero Address check."
             );
 
+            // Calculations and state update
             uint256 tokenAmount = _maxTokens;
             uint256 initialLiquidity = address(this).balance;
+            totalSupply = initialLiquidity;
             balances[msg.sender] += initialLiquidity;
 
-
-            IERC20 token = IERC20(tokenAddress);
-            token.transferFrom(msg.sender, address(this), tokenAmount);
-
+            // Approval, transfer, mint
+            IERC20(tokenAddress).approve(address(this), tokenAmount);
+            bool success = IERC20(tokenAddress).transferFrom(msg.sender, address(this), tokenAmount);
             _mint(msg.sender, liquidity);
+
+            emit AddLiquidity(msg.sender, msg.value, tokenAmount);
+            emit MintLuni(msg.sender, liquidityMinted);
 
             return liquidity;
         }
