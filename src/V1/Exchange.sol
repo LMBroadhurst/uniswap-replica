@@ -29,7 +29,7 @@ contract Exchange is ERC20 {
     event TokenPurchase(address indexed buyer, uint256 indexed ethSold, uint256 indexed tokensBought);
     event EthPurchase(address indexed buyer, uint256 indexed tokensSold, uint256 indexed ethBought);
     event AddLiquidity(address indexed provider, uint256 indexed ethAmount, uint256 indexed tokenAmount);
-    event RemoveLiquidity(address indexed buyer, uint256 indexed ethAmount, uint256 indexed tokenAmount);
+    event RemoveLiquidity(address indexed user, uint256 indexed ethAmount, uint256 indexed tokenAmount);
     event Transfer(address indexed buyer, uint256 indexed _to, uint256 indexed _value);
     // event Approval(address indexed _owner, address indexed _spender, uint256 indexed _value); // defined in IERC20
     event MintLuni(address indexed _minter, uint256 indexed _amount);
@@ -117,17 +117,35 @@ contract Exchange is ERC20 {
         }
     }
 
-    function removeLiquidity(uint256 _amount) public returns (uint256, uint256) {
-        require(_amount > 0, "amount must be greater than 0");
+    function removeLiquidity(uint256 _amount, uint256 _minEth, uint256 _minTokens, uint256 _deadline)
+    public returns (uint256, uint256) {
+        require(_amount > 0 && _minEth > 0 && _minTokens > 0, "amount/ETH/tokens must all be greater than 0");
+        require(_deadline > block.timestamp, "Must give a period of time to perform removeLiquidity");
 
-        uint256 ethAmount = (address(this).balance * _amount) / totalSupply();
-        uint256 tokenAmount = (getTokenReserves() * _amount) / totalSupply();
+        // get number of minted LUNI, ensure it is greater than 0/pool has liquidity
+        uint256 totalLiquidity = totalSupply();
+        require(totalLiquidity > 0, "Pool must have liquidity > 0 for liquidity to be removed");
 
+        // get eth/token reserves
+        uint256 ethReserves = address(this).balance;
+        uint256 tokenReserves = getTokenReserves();
+
+        // calculate eth/tokens user will receive & validate with assertions
+        uint256 ethRedeemAmount = (ethReserves * _amount) / totalLiquidity;
+        uint256 tokenRedeemAmount = (tokenReserves * _amount) / totalLiquidity;
+        require(ethRedeemAmount >= _minEth && tokenRedeemAmount >= _minTokens, "Min. ETH or Tokens breached.");
+
+        balances[msg.sender] -= _amount;
         _burn(msg.sender, _amount);
-        payable(msg.sender).transfer(ethAmount);
-        IERC20(tokenAddress).transfer(msg.sender, tokenAmount);
 
-        return (ethAmount, tokenAmount);
+        payable(msg.sender).transfer(ethRedeemAmount);
+        bool success = IERC20(tokenAddress).transfer(msg.sender, tokenRedeemAmount);
+        require(success, "Token transfer failed.");
+
+        emit Transfer(address(this), msg.sender, tokenRedeemAmount);
+        emit RemoveLiquidity(msg.sender, ethRedeemAmount, tokenRedeemAmount);
+
+        return (ethRedeemAmount, tokenRedeemAmount);
     }
 
     // -- SWAPS -- //
