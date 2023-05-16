@@ -65,6 +65,7 @@ contract Exchange is ERC20 {
             uint256 tokenReserve = getTokenReserves();
 
             // calculate tokens needed for swap and LUNI minted
+            // +1 to ethReserve confused me initially. It looks like it's to avoid a 0 division error by making it at least 1 wei
             uint256 tokenAmount = (msg.value * tokenReserve) / (ethReserve + 1);
             uint256 liquidityMinted = (msg.value * totalSupply()) / ethReserve;
 

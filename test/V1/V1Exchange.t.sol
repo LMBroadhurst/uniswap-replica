@@ -14,8 +14,8 @@ contract V1Test is DSTest {
     Exchange exchange;
     ERC20Mintable token1;
 
-    address lewis = address(0x12345);
-    address michael = address(0x23456);
+    address homer = address(0x12345);
+    address marge = address(0x23456);
 
     function setUp() public {
         // Create the ERC20 token and the Exchange
@@ -27,49 +27,88 @@ contract V1Test is DSTest {
         uint256 contractBalanceToken1 = IERC20(token1).balanceOf(address(this));
         assert(contractBalanceToken1 == 1e18);
 
-        // Send Lewis & Michael 1e3 of LOP & add ether
-        vm.deal(lewis, 1e3 ether);
-        token1.approve(lewis, 1e3);
-        token1.transfer(lewis, 1e3);
-        assert(lewis.balance == 1e3 ether);
-        assert(IERC20(token1).balanceOf(lewis) == 1e3);
+        // Send Homer & Marge 1e3 of LOP & add ether
+        vm.deal(homer, 1e3 ether);
+        token1.approve(homer, 1e3);
+        token1.transfer(homer, 1e3);
+        assert(homer.balance == 1e3 ether);
+        assert(IERC20(token1).balanceOf(homer) == 1e3);
 
-        vm.deal(michael, 1e3 ether);
-        token1.approve(michael, 1e3);
-        token1.transfer(michael, 1e3);
-        assert(michael.balance == 1e3 ether);
-        assert(IERC20(token1).balanceOf(michael) == 1e3);
+        vm.deal(marge, 1e3 ether);
+        token1.approve(marge, 1e3);
+        token1.transfer(marge, 1e3);
+        assert(marge.balance == 1e3 ether);
+        assert(IERC20(token1).balanceOf(marge) == 1e3);
     }
+
 
     function testAddLiquidityToNewExchange() public {
         // Ensure exchange has no balance
         assert(exchange.getTokenReserves() == 0);
 
-        // addLiquidity via lewis' address
-        uint256 liquidity = lewisAddsLiquidityToExchange(1e1);
+        // addLiquidity via homer' address
+        uint256 homersEth = 1e1;
+        uint256 homersTokens = 5e1;
+        uint256 liquidityMinted = userAddsLiquidityToExchange(homer, homersEth, homersTokens);
 
-        // Ensure address of exchange has received the tokens & lewis sent the tokens
-        assert(IERC20(token1).balanceOf(address(exchange)) == 1e1);
-        assert(address(exchange).balance == 1e1);
-        assert(IERC20(token1).balanceOf(lewis) == 0);
-        assert(lewis.balance == (1e3 ether - 1e1));
+        // Ensure address of exchange has received the tokens
+        assert(IERC20(token1).balanceOf(address(exchange)) == homersTokens);
+        assert(address(exchange).balance == homersEth);
 
-        // Ensure lewis has received the LUNI-V1 tokens
-        assert(IERC20(exchange).balanceOf(lewis) == liquidity);
+        // Ensure homer has sent his eth and tokens, and received his LUNI tokens
+        assert(IERC20(token1).balanceOf(homer) == (1e3 - homersTokens));
+        assert(address(homer).balance == 1e3 ether - homersEth);
+        assert(IERC20(exchange).balanceOf(homer) == liquidityMinted);
     }
-//
-//    function testAddLiquidityToExistingExchange() public {
-//        // Check of exchange reserves
-//        assert(exchange.getTokenReserves() == 0);
-//
-//        // Add liquidity and check reserves
-//        lewisAddsLiquidityToExchange(1e9);
-//        assert(IERC20(token1).balanceOf(address(exchange)) == 1e9);
-//        assert(address(exchange).balance == 1e9);
-//
-//        uint256 liquidity = michaelAddsLiquidityToExchange(1e9);
-//        assert(IERC20(exchange).balanceOf(michael) == liquidity);
-//    }
+
+
+    function testAddLiquidityToExistingExchange() public {
+        uint256 homersEth = 2e1;
+        uint256 homersTokens = 6e1;
+        userCreatesLiquidExchange(homer, homersEth, homersTokens);
+
+        // final sanity check on exchange
+        assert(address(exchange).balance == homersEth);
+
+        // marge adds liquidity to existing exchange
+        vm.startPrank(marge);
+        uint256 _ethAmount = 3e1;
+        uint256 _tokenAmount = 9e1;
+        token1.approve(address(exchange), _tokenAmount);
+        uint256 liquidityMinted = exchange.addLiquidity
+            {value: _ethAmount}
+            (_ethAmount, _tokenAmount, block.timestamp + 12 seconds);
+        vm.stopPrank();
+
+        assert(address(exchange).balance == (homersEth + _ethAmount));
+    }
+
+
+    function userAddsLiquidityToExchange(address _user, uint256 _ethAmount, uint256 _tokenAmount)
+    public returns (uint256) {
+        vm.startPrank(homer);
+        token1.approve(address(exchange), _tokenAmount);
+        uint256 liquidityMinted = exchange.addLiquidity
+            {value: _ethAmount}
+            (_ethAmount, _tokenAmount, block.timestamp + 12 seconds);
+        vm.stopPrank();
+
+        return liquidityMinted;
+    }
+
+    function userCreatesLiquidExchange(address _user, uint256 _usersEth, uint256 _usersTokens) public {
+        // Check of exchange reserves
+        assert(exchange.getTokenReserves() == 0);
+
+        // Add liquidity via homer
+        uint256 mintedLiquidity = userAddsLiquidityToExchange(homer, _usersEth, _usersTokens);
+
+        // sanity check we have an exchange with liq. and homer received tokens
+        assert(IERC20(token1).balanceOf(address(exchange)) == _usersTokens);
+        assert(address(exchange).balance == _usersEth);
+        assert(IERC20(exchange).balanceOf(address(_user)) == mintedLiquidity);
+    }
+
 //
 //    function testRemovesLiquidityFromExchange() public {
 //        // Lewis and Michael add liquidity to the pool
@@ -107,15 +146,7 @@ contract V1Test is DSTest {
 //        vm.stopPrank();
 //    }
 //
-//    function lewisAddsLiquidityToExchange(uint256 _amount) public returns (uint256) {
-//        vm.startPrank(lewis);
-//        token1.approve(address(exchange), _amount);
-//        uint256 liquidity = exchange.addLiquidity{value: _amount}(_amount);
-////        console.log("Liquidity of Lewis (%s) is %s coins ", lewis, liquidity);
-//        vm.stopPrank();
-//
-//        return liquidity;
-//    }
+
 //
 //    function michaelAddsLiquidityToExchange(uint256 _amount) public returns (uint256) {
 //        vm.startPrank(michael);
