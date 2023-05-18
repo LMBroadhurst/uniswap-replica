@@ -8,9 +8,9 @@ import "forge-std/Test.sol";
 import "forge-std/Vm.sol";
 
 
-contract V1Test is DSTest {
+contract V1Test is Test {
 
-    Vm vm = Vm(HEVM_ADDRESS);
+//    Vm vm = Vm(HEVM_ADDRESS);
     Exchange exchange;
     ERC20Mintable token1;
 
@@ -63,7 +63,6 @@ contract V1Test is DSTest {
 
 
     function testAddLiquidityToExistingExchange() public {
-        uint256 initialContractTokenBalance = IERC20(token1).balanceOf(address(this));
 
         uint256 homersEth = 2e1;
         uint256 homersTokens = 6e1;
@@ -79,10 +78,7 @@ contract V1Test is DSTest {
 
         // Exchange balances
         assert(address(exchange).balance == (homersEth + margesEth));
-
-        // @audit -- Check this totalExchangeBalance out, think the 1 wei addition is causing a problem
-//        uint256 totalExchangeTokens = margesTokens + homersTokens;
-//        console.log(IERC20(token1).balanceOf(address(exchange)), totalExchangeTokens);
+        assertApproxEqAbs(IERC20(token1).balanceOf(address(exchange)), margesTokens + homersTokens, 10);
 
         // Luni Balances & totalSupply
         assert(IERC20(exchange).balanceOf(marge) == margeLiquidity);
@@ -91,27 +87,47 @@ contract V1Test is DSTest {
     }
 
     function testRemovesLiquidityFromExchange() public {
+        uint256 margeEth = 1e2;
+        uint256 margeTokens = 5e2;
+        uint256 homerEth = 2e2;
+        uint256 homerTokens = 1e3;
+
         // Homer and Marge add liquidity to the pool
         userCreatesLiquidExchange(marge, margeEth, margeTokens);
         userAddsLiquidityToExchange(homer, homerEth, homerTokens);
-        assert(IERC20(exchange).balanceOf(lewis) == 1e6);
-        assert(IERC20(exchange).balanceOf(michael) == 2e7);
+        assert(IERC20(exchange).balanceOf(marge) == 1e2);
+        assert(IERC20(exchange).balanceOf(homer) == 2e2);
 
-        // Lewis removes 2e4 of liquidity
-        vm.prank(lewis);
-        exchange.removeLiquidity(2e4);
+        // Marge removes 5e1 of liquidity
+        vm.prank(marge);
+        (uint256 ethRedeemAmount, uint256 tokenRedeemAmount)
+            = exchange.removeLiquidity(5e1, 4e1, 2e2, block.timestamp + 12 seconds);
 
-        // Michael removes 9e2 of liquidity
-        vm.prank(michael);
-        exchange.removeLiquidity(9e2);
+        // assertions for marge
+        assert(IERC20(exchange).balanceOf(marge) == 1e2 - 5e1);
+        assert(IERC20(token1).balanceOf(marge) == (1e3 - 5e2) + tokenRedeemAmount);
 
-        // assertions
-        assert(IERC20(exchange).balanceOf(lewis) == (1e6 - 2e4));
-        assert(IERC20(exchange).balanceOf(michael) == (2e7 - 9e2));
-        assert(address(exchange).balance == (1e6 - 2e4) + (2e7 - 9e2));
-        assert(IERC20(token1).balanceOf(address(exchange)) == (1e6 - 2e4) + (2e7 - 9e2));
+        console.log(((margeTokens + homerTokens) - tokenRedeemAmount));
+        console.log(IERC20(token1).balanceOf(address(exchange)));
+
+        // assertions for exchange, approx to account for gas/1 wei check
+        assertApproxEqAbs(IERC20(token1).balanceOf(address(exchange)), ((margeTokens + homerTokens) - tokenRedeemAmount), 10);
+        assertApproxEqAbs(address(exchange).balance, ((margeEth + homerEth)- ethRedeemAmount), 10);
     }
 
+    function testRemovesTooMuchLiquidityFromExchange() public {
+        uint256 margeEth = 1e2;
+        uint256 margeTokens = 5e2;
+
+        // Marge add liquidity to the pool
+        userCreatesLiquidExchange(marge, margeEth, margeTokens);
+
+        // Marge attempts to remove 1e7 liquidity
+        vm.startPrank(marge);
+        vm.expectRevert();
+        exchange.removeLiquidity(3e2, 9.9e2, 4.9e2, block.timestamp + 12 seconds);
+        vm.stopPrank();
+    }
 
     function userAddsLiquidityToExchange(address _user, uint256 _ethAmount, uint256 _tokenAmount)
     public returns (uint256) {
@@ -140,21 +156,5 @@ contract V1Test is DSTest {
 
         return mintedLiquidity;
     }
-
-
-//
-//    function testRemovesTooMuchLiquidityFromExchange() public {
-//        // Lewis and Michael add liquidity to the pool
-//        lewisAddsLiquidityToExchange(1e6);
-//        michaelAddsLiquidityToExchange(2e7);
-//        assert(IERC20(exchange).balanceOf(lewis) == 1e6);
-//        assert(IERC20(exchange).balanceOf(michael) == 2e7);
-//
-//        // lewis attempts to remove 1e7 liquidity
-//        vm.startPrank(lewis);
-//        vm.expectRevert();
-//        exchange.removeLiquidity(1e7);
-//        vm.stopPrank();
-//    }
 
 }
