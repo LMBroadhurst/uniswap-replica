@@ -22,3 +22,14 @@ contract Factory {
         return tokenToExchange[_tokenAddress];
     }
 }
+
+/*
+forge create
+    --rpc-url https://rpc2.sepolia.org
+    --private-key
+    .\src\V1\Factory.sol:Factory
+
+Deployer: 0x319d567611c5a1017BA081e2B27B7c7b57e1797d
+Deployed to: 0x227DF48dc788Eb7f8907388E7A11873c84fc609b
+Transaction hash: 0xacdb09109a3aee14ff934bede3f8c391a147ab6700db0221f4d29c8f20904928
+*/

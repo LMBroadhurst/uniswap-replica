@@ -9,7 +9,7 @@ contract MyScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
 
         vm.startBroadcast(deployerPrivateKey);
-        Token token = new Token("Link", 1e18);
+        Token token = new Token("Luniswap V1", "LUNI", 1e18);
         vm.stopBroadcast();
     }
 }
